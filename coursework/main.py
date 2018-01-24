@@ -6,6 +6,7 @@ from speechkit1_0 import SpeechException
 
 bot = telebot.TeleBot(global_constants.token)
 
+
 markup = types.ReplyKeyboardMarkup()
 markup.row('/help')
 

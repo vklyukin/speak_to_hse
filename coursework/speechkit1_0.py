@@ -33,8 +33,10 @@ def speech_to_text(message, file_path):
 
     text = e[0].text
 
-    if ('<censored>' in text) or (not text):
-        raise SpeechException('No text found.')
+    if (not text):
+        raise SpeechException('Не удалось разобрать речь')
+    elif ('<censored>' in text):
+        raise SpeechException('Не ругайся')
     else:
         return text
 
