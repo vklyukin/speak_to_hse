@@ -4,7 +4,7 @@ import uuid
 
 YANDEX_ASR_PATH = 'https://asr.yandex.net/asr_xml'
 request_id = uuid.uuid4().hex;
-topic='notes'
+topic='queries'
 VOICE_LANGUAGE = 'ru-RU'
 
 from global_constants import YANDEX_API_KEY
@@ -27,19 +27,21 @@ def speech_to_text(message, file_path):
         VOICE_LANGUAGE
       ),
       data=requests.get(file_url).content,
-      headers={"Content-type": 'audio/ogg;codecs=opus'}
+      headers={'Host': 'asr.yandex.net',"Content-type": 'audio/ogg;codecs=opus'}
     ).content
     e = ElementTree.fromstring(xml_data)
 
-    text = e[0].text
+    if len(e) > 0:
+        text = e[0].text
+    else:
+        raise SpeechException('Не удалось разобрать речь')
 
     if (not text):
         raise SpeechException('Не удалось разобрать речь')
-    elif ('<censored>' in text):
-        raise SpeechException('Не ругайся')
     else:
         return text
 
 class SpeechException(Exception):
     def __init__(self, message):
         self.message = message
+
