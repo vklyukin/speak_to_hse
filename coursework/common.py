@@ -55,8 +55,6 @@ def get_info_common(text, user_id):
         return e.message
     else:
         url = "http://ruz.hse.ru/ruzservice.svc/personlessons?fromdate={0}&todate={0}&receivertype=0&email={1}".format(str(_date),user_id)
-        response = ''
-        asnwer = ''
         try:
             response = urllib.request.urlopen(url).read()
         except urllib.error.HTTPError:
@@ -66,7 +64,7 @@ def get_info_common(text, user_id):
         else:
             output = response.decode('utf-8')
             jsonstring = json.loads(output)
-            answer = str(_date)+"\n__________________________\n"
+            answer = "**"+str(_date)+"**"+"\n__________________________\n"
             for item in jsonstring:
-                answer = answer + item['discipline']+','+item['auditorium']+'каб.'+'\n'+item['beginLesson']+'-'+item['endLesson']+'\n__________________________\n'
+                answer = answer + item['discipline']+', **'+item['auditorium']+'каб.**'+'\n**'+item['beginLesson']+'-'+item['endLesson']+'**\n__________________________\n'
         return answer
