@@ -64,7 +64,9 @@ def get_info_common(text, user_id):
         else:
             output = response.decode('utf-8')
             jsonstring = json.loads(output)
-            answer = "**"+str(_date)+"**"+"\n__________________________\n"
-            for item in jsonstring:
-                answer = answer + item['discipline']+', **'+item['auditorium']+'каб.**'+'\n**'+item['beginLesson']+'-'+item['endLesson']+'**\n__________________________\n'
-        return answer
+            if len(jsonstring)>0:
+                answer = "<b>"+datetime.strptime(str(_date), "%Y.%m.%d").strftime("%d.%m.%Y")+"</b>, "+jsonstring[0]["dayOfWeekString"]+"\n\n"
+                for item in jsonstring:
+                    answer = answer + item['discipline']+', <b>'+item['auditorium']+'каб.</b>'+'\n<b>'+item['beginLesson']+'-'+item['endLesson']+'</b>\n<i>'+item['lecturer']+'</i>\n'
+                return answer
+            return "<b>"+str(_date)+"</b> занятий нет."

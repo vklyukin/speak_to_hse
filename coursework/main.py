@@ -27,6 +27,8 @@ markup.row('/help')
 #Outputs debug messages to console
 logger = telebot.logger
 telebot.logger.setLevel(logging.DEBUG)
+#downloading the timetable for the next week
+#get_timetable()
 #loading of trained model
 decision_model_pkl = open(gc.model_filename, 'rb')
 decision_model = pickle.load(decision_model_pkl)
@@ -37,7 +39,7 @@ with open(email_filename, 'rb') as file:
 file.close()
 #file, which containing dict with minors of users
 minor_filename = 'users_minor.pkl'
-with open(email_filename, 'rb') as file:
+with open(minor_filename, 'rb') as file:
     users_minor = pickle.load(file)
 file.close()
 #steps of logging of user
@@ -77,20 +79,24 @@ def user_login(message):
         bot.reply_to(message, "Ваша почта подтверждена")
     else:
         bot.reply_to(message, "Неверный формат. Убедитесь, что ваша почта зарегестрирована на edu.hse.ru или hse.ru")
-        #дописать settings, проверить, дописать посылку get-запроса с почтой юзера
 
 @bot.message_handler(func=lambda message: user_steps_minor.get(message.chat.id) == USER_LOGGING)
 def user_set_minor(message):
     answer = message.text.strip().lower()
-    if answer in minors_list.keys():
-        users_minor.update({message.chat.id:message.text.strip().lower()})
-        with open(minor_filename, 'wb') as file:
-            pickle.dump(users_email, file)
-        file.close()
-        user_steps_minor[message.chat.id] = USER_ACCEPTED
-        bot.reply_to(message, "Майнор подтвержден: "+minors_list[answer])
-    else:
-        bot.reply_to("Неверный формат ввода аббревиатура майнора. Сверьтесь со списком")
+    found = False
+    for minor in minors_list.keys():
+        if minor.lower() == answer:
+            found = True
+            users_minor.update({message.chat.id:minor})
+    with open(minor_filename, 'wb') as file:
+        pickle.dump(users_minor, file)
+    file.close()
+    user_steps_minor[message.chat.id] = USER_ACCEPTED
+    print(users_minor)
+    print(minors_list[users_minor[message.chat.id]])
+    bot.reply_to(message, "Майнор подтвержден: "+minors_list[users_minor[message.chat.id]])
+    if not found:
+        bot.reply_to(message, "Неверный формат ввода аббревиатура майнора. Сверьтесь со списком")
 
 @bot.message_handler(commands=['help'])
 def start_conversation(message):
@@ -108,7 +114,6 @@ def voice_processing(message):
         text = speech_to_text(message, file_info.file_path)
     except SpeechException:
         # Обработка случая, когда распознавание не удалось
-        print(message.chat.id)
         bot.send_message(message.chat.id, 'К сожалению, я не смог разобрать твою речь')
     else:
         # Обработка фразы с помощью нейронной сети
@@ -116,24 +121,24 @@ def voice_processing(message):
         type = predict(text)
         bot.send_message(message.chat.id, type)
         if type == 'common':
-            bot.send_message(message.chat.id, get_info_common(text, users_email[message.chat.id]))
+            bot.send_message(message.chat.id, get_info_common(text, users_email[message.chat.id]), parse_mode='html')
         elif type == 'help':
             start_conversation(message)
         elif type == 'minor':
             lessons = get_info_minor(users_minor[message.chat.id])
             if len(lessons) > 0:
-                current = lessons[0]["date"]
-                answer = "**"+datetime.strptime(lessons[0]["date"], "%Y.%m.%d").strftime("%d.%m.%Y")+"**, "+lessons[0]["dayOfWeekString"]+"\n__"+lessons[0]["building"]+"__\n\n"+lessons[0]["discipline"]+", "+lessons[0]["time"]+"\n"
+                answer = "<b>"+datetime.strptime(lessons[0]["date"], "%Y.%m.%d").strftime("%d.%m.%Y")+"</b>, "+lessons[0]["dayofweek"]+"\n<i>"+lessons[0]["building"]+"</i>\n\n<b>"+lessons[0]["discipline"]+"</b>, <b>"+lessons[0]["time"]+"</b>, "+lessons[0]["auditorium"]+"\n<i>"+lessons[0]["lecturer"]+"</i>\n"
                 for i in range(1,len(lessons)):
                     if lessons[i]["date"] != lessons[i-1]["date"]:
-                        answer += "\n**"+datetime.strptime(lessons[i]["date"], "%Y.%m.%d").strftime("%d.%m.%Y")+"**, "+lessons[i]["dayOfWeekString"]+"\n__"+lessons[i]["building"]+"__\n\n"
+                        answer += "\n<b>"+datetime.strptime(lessons[i]["date"], "%Y.%m.%d").strftime("%d.%m.%Y")+"</b>, "+lessons[i]["dayofweek"]+"\n"+lessons[i]["building"]+"\n\n"
                     elif lessons[i]["building"] != lessons[i]["building"]:
-                        answer += "\n__"+lessons[i]["building"]+"__\n\n"
-                    answer += lessons[0]["discipline"]+", "+lessons[0]["time"]+"\n"
+                        answer += "\n"+lessons[i]["building"]+"\n\n"
+                    answer += "<b>"+lessons[i]["discipline"]+"</b>, <b>"+lessons[i]["time"]+"</b>, "+lessons[i]["auditorium"]+"\n<i>"+lessons[i]["lecturer"]+"</i>\n"
+                bot.send_message(message.chat.id, answer, parse_mode='html')
             else:
                 today = datetime.today().date().strftime("%d.%m.%Y")
                 today_plus_week = (datetime.today().date() + timedelta(days=7)).strftime("%d.%m.%Y")
-                bot.send_message("В период с {0} по {1} занятий по данному майнору нет".format(today, today_plus_week))
+                bot.send_message(message.chat.id,"В период с {0} по {1} занятий по данному майнору нет".format(today, today_plus_week))
 
 
 def predict(text:str) -> str:
